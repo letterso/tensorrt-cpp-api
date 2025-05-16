@@ -5,7 +5,7 @@
 
 template <typename T>
 bool Engine<T>::buildLoadNetwork(std::string onnxModelPath, const std::array<float, 3> &subVals, const std::array<float, 3> &divVals,
-                                 bool normalize) {
+                            bool normalize) {
     const auto engineName = serializeEngineOptions(m_options, onnxModelPath);
     const auto engineDir = std::filesystem::path(m_options.engineFileDir);
     std::filesystem::path enginePath = engineDir / engineName;
@@ -37,7 +37,7 @@ bool Engine<T>::buildLoadNetwork(std::string onnxModelPath, const std::array<flo
 
 template <typename T>
 bool Engine<T>::loadNetwork(std::string trtModelPath, const std::array<float, 3> &subVals, const std::array<float, 3> &divVals,
-                            bool normalize) {
+                            bool normalize, const int &height, const int &width) {
     m_subVals = subVals;
     m_divVals = divVals;
     m_normalize = normalize;
@@ -128,7 +128,11 @@ bool Engine<T>::loadNetwork(std::string trtModelPath, const std::array<float, 3>
             // GpuMat buffer directly.
 
             // Store the input dims for later use
-            m_inputDims.emplace_back(tensorShape.d[1], tensorShape.d[2], tensorShape.d[3]);
+            if(height == 0 && width == 0) {
+                m_inputDims.emplace_back(tensorShape.d[1], tensorShape.d[2], tensorShape.d[3]);
+            } else {
+                m_inputDims.emplace_back(tensorShape.d[1], height, width);
+            }
             m_inputBatchSize = tensorShape.d[0];
         } else if (tensorType == nvinfer1::TensorIOMode::kOUTPUT) {
             // Ensure the model output data type matches the template argument
@@ -167,10 +171,14 @@ bool Engine<T>::loadNetwork(std::string trtModelPath, const std::array<float, 3>
             uint32_t outputLength = 1;
             m_outputDims.push_back(tensorShape);
 
-            for (int j = 1; j < tensorShape.nbDims; ++j) {
-                // We ignore j = 0 because that is the batch size, and we will take that
-                // into account when sizing the buffer
-                outputLength *= tensorShape.d[j];
+            if(height == 0 && width == 0) {
+                for (int j = 1; j < tensorShape.nbDims; ++j) {
+                    // We ignore j = 0 because that is the batch size, and we will take that
+                    // into account when sizing the buffer
+                    outputLength *= tensorShape.d[j];
+                }            
+            } else {
+                outputLength = tensorShape.d[1] * height * width;
             }
 
             m_outputLengths.push_back(outputLength);

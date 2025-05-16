@@ -88,8 +88,9 @@ public:
     //    subVals = {0.5f, 0.5f, 0.5f};
     //    divVals = {0.5f, 0.5f, 0.5f};
     //    normalize = true;
+    //    height,width = 0 ; 0 use the model's input size, otherwise use the input size
     bool loadNetwork(std::string trtModelPath, const std::array<float, 3> &subVals = {0.f, 0.f, 0.f},
-                     const std::array<float, 3> &divVals = {1.f, 1.f, 1.f}, bool normalize = true) override;
+                     const std::array<float, 3> &divVals = {1.f, 1.f, 1.f}, bool normalize = true, const int& height = 0, const int& width = 0) override;
 
     // Run inference.
     // Input format [input][batch][cv::cuda::GpuMat]
