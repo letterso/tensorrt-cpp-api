@@ -78,7 +78,13 @@ bool Engine<T>::runInference(const std::vector<std::vector<cv::cuda::GpuMat>> &i
         // internally use NHWC to optimize cuda kernels See:
         // https://docs.nvidia.com/deeplearning/tensorrt/developer-guide/index.html#data-layout
         // Copy over the input data and perform the preprocessing
-        auto mfloat = blobFromGpuMats(batchInput, m_subVals, m_divVals, m_normalize);
+        cv::cuda::GpuMat mfloat;
+        if(input.channels() == 3) {
+            mfloat = blobFromGpuMats(batchInput, m_subVals, m_divVals, m_normalize, true);
+        }
+        else {
+            mfloat = bloFromMonoGpuMats(batchInput, m_subVals, m_divVals, m_normalize);
+        }
         preprocessedInputs.push_back(mfloat);
         m_buffers[i] = mfloat.ptr<void>();
     }

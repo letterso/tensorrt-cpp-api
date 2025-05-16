@@ -131,6 +131,40 @@ cv::cuda::GpuMat Engine<T>::blobFromGpuMats(const std::vector<cv::cuda::GpuMat> 
     return mfloat;
 }
 
+template <typename T>
+cv::cuda::GpuMat Engine<T>::bloFromMonoGpuMats(const std::vector<cv::cuda::GpuMat> &batchInput, const std::array<float, 3> &subVals, const std::array<float, 3> &divVals, bool normalize) {
+    CHECK(!batchInput.empty())
+    CHECK(batchInput[0].channels() == 1)
+
+    int rows = batchInput[0].rows;
+    int cols = batchInput[0].cols;
+    size_t width = static_cast<size_t>(rows) * cols;  // 每张图像像素数
+    
+    cv::cuda::GpuMat gpu_dst(1, width * batchInput.size(), CV_8UC1);
+
+    // 逐张图像拷贝到 gpu_dst 对应的子区域
+    for (size_t i = 0; i < batchInput.size(); ++i) {
+        // 以偏移指针方式构造子 GpuMat，不产生数据拷贝，仅指向 gpu_dst 的一段内存
+        cv::cuda::GpuMat slice(rows, cols, CV_8U, gpu_dst.ptr() + width * i);
+        batchInput[i].copyTo(slice);
+    }
+        
+    cv::cuda::GpuMat mfloat;
+    if (normalize) {
+        // [0.f, 1.f]
+        gpu_dst.convertTo(mfloat, CV_32FC1, 1.f / 255.f);
+    } else {
+        // [0.f, 255.f]
+        gpu_dst.convertTo(mfloat, CV_32FC1);
+    }
+
+    // Apply scaling and mean subtraction
+    cv::cuda::subtract(mfloat, cv::Scalar(subVals[0]), mfloat);
+    cv::cuda::divide(mfloat, cv::Scalar(divVals[0]), mfloat);
+
+    return mfloat;
+}
+
 template <typename T> void Engine<T>::clearGpuBuffers() {
     if (!m_buffers.empty()) {
         // Free GPU memory of outputs
